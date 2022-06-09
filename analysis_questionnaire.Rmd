@@ -1,0 +1,330 @@
+---
+title: "Questionnaire Analysis"
+output: html_notebook
+---
+
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r}
+df <- read.csv("Social Environment.csv")
+
+colnames(df)[4] <- 'I_E'
+colnames(df)[5] <- 'dg_go_noone'
+colnames(df)[6] <- 'dg_soc_noone'
+colnames(df)[7] <- 'fb_go_noone'
+colnames(df)[8] <- 'fb_soc_noone'
+colnames(df)[9] <- 'fb_go_alot'
+colnames(df)[10] <- 'fb_soc_alot'
+colnames(df)[11] <- 'ask_to_hang_out'
+
+colnames(df)[12] <- 'SE_place_for_meeting_and_connections'
+colnames(df)[13] <- 'SE_place_for_deeper_connections'
+colnames(df)[14] <- 'FB_place_for_meeting_and_connections'
+colnames(df)[15] <- 'FB_place_for_deeper_connections'
+colnames(df)[16] <- 'hard_to_contact_new_people'
+colnames(df)[17] <- 'natural_to_take_initiative'
+colnames(df)[18] <- 'easier_same_sex_connection'
+colnames(df)[19] <- 'easier_similar_I_E'
+colnames(df)[20] <- 'easier_socialise_not_taking_initiative'
+colnames(df)[21] <- 'more_likely_to_go_if_knowing_more_people'
+colnames(df)[22] <- 'would_like_to_socialise_more'
+colnames(df)[23] <- 'would_like_a_larger_network'
+colnames(df)[24] <- 'would_like_more_close_friends'
+colnames(df)[25] <- 'social_contributes'
+colnames(df)[26] <- 'cog_sci_social_environment_is_special'
+
+
+df
+
+
+```
+```{r}
+#friday bar deep connections
+df <-
+  mutate(transform(df, FB_place_for_deeper_connections = as.integer(as.character(
+       factor(FB_place_for_deeper_connections, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#small event deep connections
+df <-
+  mutate(transform(df, SE_place_for_deeper_connections = as.integer(as.character(
+       factor(SE_place_for_deeper_connections, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#SE_place_for_meeting_and_connections
+df <-
+  mutate(transform(df, SE_place_for_meeting_and_connections = as.integer(as.character(
+       factor(SE_place_for_meeting_and_connections, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#FB_place_for_meeting_and_connections
+df <-
+  mutate(transform(df, FB_place_for_meeting_and_connections = as.integer(as.character(
+       factor(FB_place_for_meeting_and_connections, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#hard_to_contact_new_people
+df <-
+  mutate(transform(df, hard_to_contact_new_people = as.integer(as.character(
+       factor(hard_to_contact_new_people, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+#easier for same sex
+df <-
+  mutate(transform(df, easier_same_sex_connection = as.integer(as.character(
+       factor(easier_same_sex_connection, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+
+#easier_similar_I_E
+df <-
+  mutate(transform(df, easier_similar_I_E = as.integer(as.character(
+       factor(easier_similar_I_E, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#natural_to_take_initiative
+df <-
+  mutate(transform(df, natural_to_take_initiative = as.integer(as.character(
+       factor(natural_to_take_initiative, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#easier_socialise_not_taking_initiative
+df <-
+  mutate(transform(df, easier_socialise_not_taking_initiative = as.integer(as.character(
+       factor(easier_socialise_not_taking_initiative, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#more_likely_to_go_if_knowing_more_people
+df <-
+  mutate(transform(df, more_likely_to_go_if_knowing_more_people = as.integer(as.character(
+       factor(more_likely_to_go_if_knowing_more_people, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#would_like_to_socialise_more
+df <-
+  mutate(transform(df, would_like_to_socialise_more = as.integer(as.character(
+       factor(would_like_to_socialise_more, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#would_like_a_larger_network
+df <-
+  mutate(transform(df, would_like_a_larger_network = as.integer(as.character(
+       factor(would_like_a_larger_network, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#would_like_more_close_friends
+df <-
+  mutate(transform(df, would_like_more_close_friends = as.integer(as.character(
+       factor(would_like_more_close_friends, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#social_contributes
+df <-
+  mutate(transform(df, social_contributes = as.integer(as.character(
+       factor(social_contributes, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+
+#cog_sci_social_environment_is_special
+df <-
+  mutate(transform(df, cog_sci_social_environment_is_special = as.integer(as.character(
+       factor(cog_sci_social_environment_is_special, 
+         levels = c("Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree"),
+         labels = c(1, 2, 3, 4, 5, 6, 7)
+       )
+ ))))
+```
+
+```{r}
+
+df
+
+df$I_E <- as.integer(df$I_E)
+
+df %>%
+ggplot(aes(x = I_E, fill = I_E)) +
+  geom_bar()
+
+
+df$easier_similar_I_E <- as.factor(df$easier_similar_I_E)
+unique(df$easier_similar_I_E)
+
+df %>%
+  mutate(easier_similar_I_E = fct_relevel(easier_similar_I_E, 
+            "Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree")) %>%
+  ggplot(aes(x = easier_similar_I_E, fill = easier_similar_I_E)) +
+  geom_bar() +
+  facet_wrap(~I_E) +
+  labs(title = "easier_similar_I_E") +
+  theme(axis.text.x=element_blank(), axis.ticks=element_blank())
+
+```
+
+```{r}
+
+df
+
+df$would_like_a_larger_network <- as.factor(df$would_like_a_larger_network)
+unique(df$would_like_a_larger_network)
+
+df %>%
+  mutate(would_like_a_larger_network = fct_relevel(would_like_a_larger_network, 
+            "Strongly Disagree", "Disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Agree",
+            "Strongly agree")) %>%
+  ggplot(aes(x = would_like_a_larger_network, fill = would_like_a_larger_network)) +
+  geom_bar() +
+  facet_wrap(~I_E) +
+  labs(title = "would_like_a_larger_network") +
+  theme(axis.text.x=element_blank(), axis.ticks=element_blank())
+
+```
+#dont know if this is any good use really
+
+```{r}
+df %>%
+  group_by(I_E) %>%
+  summarise(mean(dg_go_noone), sd(dg_go_noone))
+```
+#as expected, the more extraverted you are, the more likely you are to go if you know no one at a dinner group
+```{r}
+df %>%
+  group_by(I_E) %>%
+  summarise(mean(fb_go_noone), sd(fb_go_noone))
+
+df %>%
+  summarise(mean(fb_go_noone), sd(fb_go_noone))
+```
+#it kind of wavers on how likely, the least likely is I_E, 3 followed by 1 and 5, overall more reversed about going to a friday bar alone than a dinner group
+```{r}
+df %>%
+  group_by(I_E) %>%
+  summarise(mean(fb_go_alot), sd(fb_go_alot))
+```
+#overall increase if they know more people, therefore i think this is something we should use as it justifies why more people should go to the event if they know more people
+```{r}
+df %>%
+  group_by(I_E) %>%
+  summarise(mean(fb_soc_noone), sd(fb_soc_noone))
+```
+#comfort on socialising when they know no one increases with IE with that random 5 in there
+```{r}
+df %>%
+  group_by(I_E) %>%
+  summarise(mean(fb_soc_alot), sd(fb_soc_alot))
+```
+#once again, i think friends is a justifiable measure here, as for the lower level introverts it makes a big difference
+
+```{r}
+plotty <- df %>%
+  group_by(I_E) %>%
+  summarise(mean(easier_socialise_not_taking_initiative), sd(easier_socialise_not_taking_initiative))
+
+plotty <- plotty %>% 
+  rename(
+    easier = 'mean(easier_socialise_not_taking_initiative)',
+    )
+
+plotty$I_E <- as.factor(plotty$I_E)
+
+ggplot(plotty, aes(fill= I_E, y= easier, x= I_E)) +
+  geom_bar(position='dodge', stat='identity') +
+  labs(title = "Easier to Socialise Not Taking Initiative Depending on I-E Score", x= "I_E", y = "Mean of Agreement", subtitle = "Agreement Scale: 1 = Strongly Disagree, 7 = Strongly Agree")
+
+```
+#people asked to hangout is increased the more ex u come, we can use this
+
+```{r}
+df %>%
+  summarise(mean(social_contributes), sd(social_contributes))
+```
+# social events contribute, leaning towards somewhat agree more than neutral
+```{r}
+df %>%
+  summarise(mean(cog_sci_social_environment_is_special), sd(cog_sci_social_environment_is_special))
+```
+# Sitting comfortably at agree
+```{r}
+df %>%
+  group_by(I_E) %>%
+  summarise(mean(SE_place_for_deeper_connections), sd(SE_place_for_deeper_connections))
+
+df %>%
+  summarise(mean(FB_place_for_deeper_connections), sd(FB_place_for_deeper_connections))
+```
+# neutral, so sex doesnt make a difference on connection
+
+```{r}
+df %>%
+  summarise(mean(cog_sci_social_environment_is_special), sd(cog_sci_social_environment_is_special))
+```
+
+```{r}
+df %>%
+  summarise(mean(easier_), sd(easier_same_sex_connection))
+```
+
+
+
+
+
+
