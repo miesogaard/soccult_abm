@@ -1,0 +1,520 @@
+---
+title: "Network Analysis for Validation"
+author: "Emma Rose and Mie"
+date: "05/06/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#setwd("~/SocCult/abm_soccult")
+```
+
+## Table of content
+
+Template of Network Analysis used from Riccardo template given in class. We are using this to load in and visualize the 2019 first semester data, and then to use quantification to validate our ABM network agaisnt the 2019 dataset. 
+
+
+There's 3 parts:
+1. Visualization
+2. Quantification 
+3. Community detection
+
+First we load the data for 2019
+
+```{r Load data}
+pacman::p_load(tidyverse,
+               here,
+               network,
+               igraph,
+               ggraph,
+               tidygraph,
+               patchwork)
+
+CogSci_2019_n1_edges <- read_csv(
+  here("CogSci19S1_NetworkFriends.csv")) %>% 
+  subset(
+    !is.na(to) & !is.na(from) & !is.na(weight))
+
+# Creating a list of unique IDs across the 3 datasets
+CogSci_2019_nodes <- data.frame(ID=unique(c(
+  CogSci_2019_n1_edges$from,
+  CogSci_2019_n1_edges$to)))
+
+citation('igraph')
+```
+
+Then we visualize the data
+
+```{r}
+
+# Remove data from people being funny
+
+CogSci_2019_nodes <- CogSci_2019_nodes %>% subset(
+   !(ID %in% c("fake0", "fake", "100", "1")) & !is.na(ID)
+)
+ 
+
+CogSci_2019_n1_edges <- CogSci_2019_n1_edges %>% subset(
+  !(to %in% c("fake0", "fake", "100", "1")) & !(from %in% c("fake0", "fake", "100", "1") & !is.na(to) & !is.na(from))
+)
+
+```
+
+```{r}
+# Create the graph from semester 1
+CogSci_2019_n1_igraph <-
+  graph_from_data_frame(d = CogSci_2019_n1_edges,
+                        vertices = CogSci_2019_nodes,
+                        directed = TRUE)
+
+CogSci_2019_n1_igraph <-
+  graph_from_data_frame(d = CogSci_2019_n1_edges,
+                        vertices = CogSci_2019_nodes,
+                        directed = TRUE)
+
+E(CogSci_2019_n1_igraph)$arrow.mode <- 0
+V(CogSci_2019_n1_igraph)$label <- ""
+V(CogSci_2019_n1_igraph)$frame.color <- "white"
+V(CogSci_2019_n1_igraph)$color <- "pink"
+E(CogSci_2019_n1_igraph)$width <- edge_attr(CogSci_2019_n1_igraph)$weight
+
+deg1 <- degree(CogSci_2019_n1_igraph, mode="all")
+V(CogSci_2019_n1_igraph)$size <- deg1
+
+p1<-plot(CogSci_2019_n1_igraph,
+     layout = layout_on_sphere, # Explore layouts!
+     edge.arrow.size = 0.2)
+```
+
+```{r}
+plot(CogSci_2019_n1_igraph,
+     layout = layout_nicely, # Explore layouts!
+     edge.arrow.size = 0.2)
+```
+
+#All together
+
+Quantification
+
+```{r}
+summary(degree(CogSci_2019_n1_igraph))
+
+```
+
+
+```{r}
+#degree_distribution(network_cleaned)
+
+
+par(mfrow=c(1,2))
+
+mean(degree(network_cleaned))
+mean(degree(CogSci_2019_n1_igraph))
+sd(degree(CogSci_2019_n1_igraph))
+
+ABM_D <- degree(network_cleaned)
+CogSci_Real_D <- degree(CogSci_2019_n1_igraph) 
+
+t.test(ABM_D, CogSci_Real_D)
+
+mean(degree_distribution(network_cleaned))
+mean(degree_distribution(CogSci_2019_n1_igraph))
+
+DegreeDistr_ABM <- degree_distribution(network_cleaned)
+DegreeDistr_2019 <- degree_distribution(CogSci_2019_n1_igraph)
+
+#t.test(DegreeDistr_ABM, DegreeDistr_2019)
+
+# Degree
+
+rethinking::dens(degree_distribution(network_cleaned))+
+  title("ABM Degree Distribution")
+rethinking::dens(degree_distribution(CogSci_2019_n1_igraph))+
+  title("2019 Data Degree Distribution")
+
+
+
+# Average path length
+
+mean_distance(network_cleaned, directed = TRUE, unconnected = TRUE)
+mean_distance(CogSci_2019_n1_igraph, directed = TRUE, unconnected = TRUE)
+
+# Clustering coefficient
+
+transitivity(network_cleaned)
+transitivity(CogSci_2019_n1_igraph)
+
+Transitivity_ABM <- transitivity(network_cleaned, type = 'local')
+Transitivity_2019 <-transitivity(CogSci_2019_n1_igraph, type = 'local')
+
+t.test(Transitivity_ABM, Transitivity_2019) 
+## Centrality
+
+mean(betweenness(network_cleaned))
+rethinking::dens(betweenness(network_cleaned))+
+  title("ABM Betweenness Centrality")
+mean(betweenness(CogSci_2019_n1_igraph))
+rethinking::dens(betweenness(CogSci_2019_n1_igraph))+
+  title("2019 Data Betweenness Centrality")
+
+Betweenness_ABM <- betweenness(network_cleaned)
+Betweenness_2019 <- betweenness(CogSci_2019_n1_igraph)
+
+t.test(Betweenness_ABM, Betweenness_2019) 
+
+
+mean(eigen_centrality(network_cleaned)$vector)
+mean(eigen_centrality(CogSci_2019_n1_igraph)$vector)
+
+Eigen_ABM <- eigen_centrality(network_cleaned)$vector
+Eigen_2019 <- eigen_centrality(CogSci_2019_n1_igraph)$vector
+
+t.test(Eigen_ABM, Eigen_2019)
+
+
+```
+
+
+## 60 Days : Joint and Big
+
+```{r}
+#Comparing only small and big events for 60 days
+
+network_cleaned_joint60 <- network_cleaned_joint_60
+network_cleaned_big60 <- network_cleaned_big_60
+
+par(mfrow=c(1,2))
+
+mean(degree(network_cleaned_joint60))
+mean(degree(network_cleaned_big60))
+
+J60_D <- degree(network_cleaned_joint60)
+BE60_D <- degree(network_cleaned_big60) 
+
+t.test(BE60_D, J60_D)
+
+mean(degree_distribution(network_cleaned_joint60))
+mean(degree_distribution(network_cleaned_big60))
+
+DegreeDistr_J60 <- degree_distribution(network_cleaned_joint60)
+DegreeDistr_BE60 <- degree_distribution(network_cleaned_big60)
+
+t.test(DegreeDistr_ABM, DegreeDistr_2019)
+
+# Degree
+
+rethinking::dens(degree_distribution(network_cleaned_joint60))+
+  title("Small Event Degree Distribution 60")
+rethinking::dens(degree_distribution(network_cleaned_big60))+
+  title("Big Event Degree Distribution 60")
+
+
+
+# Average path length
+
+mean_distance(network_cleaned_joint60, directed = TRUE, unconnected = TRUE)
+mean_distance(network_cleaned_big60, directed = TRUE, unconnected = TRUE)
+
+# Clustering coefficient
+
+transitivity(network_cleaned_joint60)
+transitivity(network_cleaned_big60)
+
+Transitivity_J60 <- transitivity(network_cleaned_joint60, type = 'local')
+Transitivity_BE60 <-transitivity(network_cleaned_big60, type = 'local')
+
+t.test(Transitivity_BE60, Transitivity_J60) 
+## Centrality
+
+mean(betweenness(network_cleaned_joint60))
+rethinking::dens(betweenness(network_cleaned_joint60))+
+  title("Small Event 60 Betweenness Centrality")
+mean(betweenness(network_cleaned_big60))
+rethinking::dens(betweenness(network_cleaned_big60))+
+  title("Big Event 60 Betweenness Centrality")
+
+Betweenness_J60 <- betweenness(network_cleaned_joint60)
+Betweenness_BE60 <- betweenness(network_cleaned_big60)
+
+t.test(Betweenness_BE60, Betweenness_J60) 
+
+
+mean(eigen_centrality(network_cleaned_joint60)$vector)
+mean(eigen_centrality(network_cleaned_big60)$vector)
+
+Eigen_J60 <- eigen_centrality(network_cleaned_joint60)$vector
+Eigen_BE60 <- eigen_centrality(network_cleaned_big60)$vector
+
+t.test(Eigen_BE60, Eigen_J60)
+
+
+```
+
+#60 days : Small and Big
+```{r}
+#Comparing only small and big events for 60 days
+
+network_cleaned_small60 <- network_cleaned_small_60
+network_cleaned_big60 <- network_cleaned_big_60
+
+par(mfrow=c(1,2))
+
+mean(degree(network_cleaned_small60))
+mean(degree(network_cleaned_big60))
+
+SE60_D <- degree(network_cleaned_small60)
+BE60_D <- degree(network_cleaned_big60) 
+
+t.test(BE60_D, SE60_D)
+
+mean(degree_distribution(network_cleaned_small60))
+mean(degree_distribution(network_cleaned_big60))
+
+DegreeDistr_SE60 <- degree_distribution(network_cleaned_small60)
+DegreeDistr_BE60 <- degree_distribution(network_cleaned_big60)
+
+#t.test(DegreeDistr_ABM, DegreeDistr_2019)
+
+# Degree
+
+rethinking::dens(degree_distribution(network_cleaned_small60))+
+  title("Small Event Degree Distribution 60")
+rethinking::dens(degree_distribution(network_cleaned_big60))+
+  title("Big Event Degree Distribution 60")
+
+
+
+# Average path length
+
+mean_distance(network_cleaned_small60, directed = TRUE, unconnected = TRUE)
+mean_distance(network_cleaned_big60, directed = TRUE, unconnected = TRUE)
+
+# Clustering coefficient
+
+transitivity(network_cleaned_small60)
+transitivity(network_cleaned_big60)
+
+Transitivity_SE60 <- transitivity(network_cleaned_small60, type = 'local')
+Transitivity_BE60 <-transitivity(network_cleaned_big60, type = 'local')
+
+t.test(Transitivity_BE60, Transitivity_SE60) 
+## Centrality
+
+mean(betweenness(network_cleaned_small60))
+rethinking::dens(betweenness(network_cleaned_small60))+
+  title("Small Event 60 Betweenness Centrality")
+mean(betweenness(network_cleaned_big60))
+rethinking::dens(betweenness(network_cleaned_big60))+
+  title("Big Event 60 Betweenness Centrality")
+
+Betweenness_SE60 <- betweenness(network_cleaned_small60)
+Betweenness_BE60 <- betweenness(network_cleaned_big60)
+
+t.test(Betweenness_BE60, Betweenness_SE60) 
+
+
+mean(eigen_centrality(network_cleaned_small60)$vector)
+mean(eigen_centrality(network_cleaned_big60)$vector)
+
+Eigen_SE60 <- eigen_centrality(network_cleaned_small60)$vector
+Eigen_BE60 <- eigen_centrality(network_cleaned_big60)$vector
+
+t.test(Eigen_BE60, Eigen_SE60)
+
+
+```
+
+
+
+## 120 Days : Joint and Big
+
+```{r}
+#Comparing only small and big events for 60 days
+
+network_cleaned_joint120 <- network_cleaned_joint_120
+network_cleaned_big120 <- network_cleaned_big_120
+
+par(mfrow=c(1,2))
+
+mean(degree(network_cleaned_joint120))
+mean(degree(network_cleaned_big120))
+
+J120_D <- degree(network_cleaned_joint120)
+BE120_D <- degree(network_cleaned_big120) 
+
+t.test(BE120_D, J120_D)
+
+mean(degree_distribution(network_cleaned_joint120))
+mean(degree_distribution(network_cleaned_big120))
+
+DegreeDistr_J60 <- degree_distribution(network_cleaned_joint120)
+DegreeDistr_BE60 <- degree_distribution(network_cleaned_big120)
+
+t.test(DegreeDistr_BE60, DegreeDistr_J60)
+
+# Degree
+
+rethinking::dens(degree_distribution(network_cleaned_joint120))+
+  title("Small Event Degree Distribution 120")
+rethinking::dens(degree_distribution(network_cleaned_big120))+
+  title("Big Event Degree Distribution 120")
+
+
+
+# Average path length
+
+mean_distance(network_cleaned_joint120, directed = TRUE, unconnected = TRUE)
+mean_distance(network_cleaned_big120, directed = TRUE, unconnected = TRUE)
+
+# Clustering coefficient
+
+transitivity(network_cleaned_joint120)
+transitivity(network_cleaned_big120)
+
+Transitivity_J120 <- transitivity(network_cleaned_joint120, type = 'local')
+Transitivity_BE120 <-transitivity(network_cleaned_big120, type = 'local')
+
+t.test(Transitivity_BE120, Transitivity_J120) 
+## Centrality
+
+mean(betweenness(network_cleaned_joint120))
+rethinking::dens(betweenness(network_cleaned_joint120))+
+  title("Small Event 120 Betweenness Centrality")
+mean(betweenness(network_cleaned_big120))
+rethinking::dens(betweenness(network_cleaned_big120))+
+  title("Big Event 120 Betweenness Centrality")
+
+Betweenness_J120 <- betweenness(network_cleaned_joint120)
+Betweenness_BE120 <- betweenness(network_cleaned_big120)
+
+t.test(Betweenness_BE120, Betweenness_J120) 
+
+
+mean(eigen_centrality(network_cleaned_joint120)$vector)
+mean(eigen_centrality(network_cleaned_big120)$vector)
+
+Eigen_J120 <- eigen_centrality(network_cleaned_joint120)$vector
+Eigen_BE120 <- eigen_centrality(network_cleaned_big120)$vector
+
+t.test(Eigen_BE120, Eigen_J120)
+
+
+```
+#120 days
+
+```{r}
+citation()
+```
+
+```{r}
+#Comparing only small and big events for 120 days
+
+network_cleaned_small120 <- network_cleaned_small_120
+network_cleaned_big120 <- network_cleaned_big_120
+
+par(mfrow=c(1,2))
+
+mean(degree(network_cleaned_small120))
+mean(degree(network_cleaned_big120))
+
+SE120_D <- degree(network_cleaned_small120)
+BE120_D <- degree(network_cleaned_big120) 
+
+t.test(BE120_D, SE120_D)
+
+mean(degree_distribution(network_cleaned_small120))
+mean(degree_distribution(network_cleaned_big120))
+
+DegreeDistr_SE120 <- degree_distribution(network_cleaned_small120)
+DegreeDistr_BE120 <- degree_distribution(network_cleaned_big120)
+
+t.test(DegreeDistr_BE120, DegreeDistr_SE120)
+
+# Degree
+
+rethinking::dens(degree_distribution(network_cleaned_small120))+
+  title("Small Event Degree Distribution 120")
+rethinking::dens(degree_distribution(network_cleaned_big120))+
+  title("Big Event Degree Distribution 120")
+
+
+
+# Average path length
+
+mean_distance(network_cleaned_small120, directed = TRUE, unconnected = TRUE)
+mean_distance(network_cleaned_big120, directed = TRUE, unconnected = TRUE)
+
+# Clustering coefficient
+
+transitivity(network_cleaned_small120)
+transitivity(network_cleaned_big120)
+
+Transitivity_SE120 <- transitivity(network_cleaned_small120, type = 'local')
+Transitivity_BE120 <-transitivity(network_cleaned_big120, type = 'local')
+
+t.test(Transitivity_BE120, Transitivity_SE120) 
+## Centrality
+
+mean(betweenness(network_cleaned_small120))
+rethinking::dens(betweenness(network_cleaned_small120))+
+  title("Small Event 120 Betweenness Centrality")
+mean(betweenness(network_cleaned_big120))
+rethinking::dens(betweenness(network_cleaned_big120))+
+  title("Big Event 120 Betweenness Centrality")
+
+Betweenness_SE120 <- betweenness(network_cleaned_small120)
+Betweenness_BE120 <- betweenness(network_cleaned_big120)
+
+t.test(Betweenness_BE120, Betweenness_SE120) 
+
+
+mean(eigen_centrality(network_cleaned_small120)$vector)
+mean(eigen_centrality(network_cleaned_big120)$vector)
+
+Eigen_SE120 <- eigen_centrality(network_cleaned_small120)$vector
+Eigen_BE120 <- eigen_centrality(network_cleaned_big120)$vector
+
+t.test(Eigen_BE120, Eigen_SE120)
+```
+
+
+# 4 Community Detection
+
+```{r}
+#making the networks look the same for easier comparing
+E(network_cleaned)$arrow.mode <- 0
+V(network_cleaned)$label <- ""
+
+# Community detection
+wc1 <- cluster_walktrap(network_cleaned)
+# wc1 <- cluster_infomap(as.undirected(network_cleaned))
+modularity(wc1)
+membership(wc1)
+
+wc2 <- cluster_walktrap(CogSci_2019_n1_igraph)
+modularity(wc2)
+membership(wc2)
+
+
+par(mfrow=c(1,2))
+
+plot(wc1, network_cleaned, layout = layout_nicely)
+plot(wc2, CogSci_2019_n1_igraph)
+
+
+# Community detection (by optimizing modularity over partitions):
+clp <- cluster_louvain(as.undirected(network_cleaned))
+plot(clp, network_cleaned, layout = layout_nicely, edge.arrow.size = 0.2)
+
+
+clp <- cluster_louvain(as.undirected(CogSci_2019_n1_igraph))
+plot(clp, CogSci_2019_n1_igraph, layout = layout_nicely, edge.arrow.size = 0.2)
+
+
+#clop <- cluster_optimal(CogSci_2019_n1_igraph)
+#plot(clop, CogSci_2019_n1_igraph)
+
+#par(mfrow=c(1,1))
+```
+
