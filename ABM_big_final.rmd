@@ -1,0 +1,833 @@
+---
+title: "Network ABM: SocCult Exam"
+author: "Emma Rose Hahn and Mie Buchhave Søgaard"
+date: "10/06/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Relevant packages for the ABM
+```{r}
+pacman::p_load(tidyverse,
+               igraph,
+               ggplot2)
+```
+
+```{r}
+set.seed(90)
+```
+ 
+### The population tibble
+
+```{r}
+N <- 20
+N_big_event <- 2 # just register any number (does not matter what it says)
+```
+
+
+```{r}
+population_function <- function(N, group_no){
+  population <- tibble(ID = 1:N, 
+                       I_E = sample(1:9, N, replace = TRUE, prob =  c(0.05, 0.15, 0.15, 0.1, 0.1, 0.15, 0.15, 0.1, 0.05)),
+                       studygroup = rep(c(1:group_no), N / group_no),
+                       N_rel = 0,
+                       degree = 0,
+                       participate_small = 0,
+                       participate_big = 0)
+  return(population)
+}
+
+
+```
+ 
+### The meeting matrix
+
+```{r}
+meeting_matrix <- matrix(0,nrow = N,ncol = N)
+
+meeting_base_function <- function(N, random_meet){
+  for (row in 1:nrow(meeting_matrix)){
+    for (col in 1:ncol(meeting_matrix)){
+      meeting_matrix[row,col] <-  meeting_matrix[col,row] <- sample(c(1:random_meet),1,replace = T)
+    }
+  }
+  return(meeting_matrix)
+}
+
+```
+
+
+
+```{r}
+
+big_event_meeting_matrix <- matrix(0,nrow = N_big_event,ncol = N_big_event)
+    
+big_event_meeting_base_function <- function(N, random_meet){
+  for (row in 1:nrow(big_event_meeting_matrix)){
+    for (col in 1:ncol(big_event_meeting_matrix)){
+      big_event_meeting_matrix[row,col] <-  big_event_meeting_matrix[col,row] <- sample(c(1:random_meet),1,replace = T)
+    }
+  }
+  return(big_event_meeting_matrix)
+}
+```
+
+### The connection matrix
+
+```{r}
+connection_matrix <- matrix(0,nrow = N,ncol = N)
+
+connection_base_function <- function(N, random_connect){
+  for (row in 1:nrow(connection_matrix)){
+    for (col in 1:ncol(connection_matrix)){
+      connection_matrix[row,col] <-  connection_matrix[col,row] <- sample(c(1:random_connect),1,replace = T)
+    }
+  }
+  return(connection_matrix)
+}
+
+```
+
+### The softmax
+
+Using the following formula:   
+       exp(x) / sum(exp(x))
+
+
+```{r}
+softmax <- function(x) exp(x) / sum(exp(x)) # Creating the softmax function
+
+softmax_matrix_function <- function(meeting_matrix) { # Applying the softmax to the weighted matrix to create the probability matrix
+  for (i in 1:ncol(meeting_matrix)) {
+    meeting_matrix[,i] <- softmax(meeting_matrix[,i])
+  }
+  return(meeting_matrix)
+}
+```
+
+#### The studygroup matrix
+
+```{r}
+## Creating a matrix with 1's when two students are in the same studygroup and 0 when they are not 
+A_study <- matrix(0,ncol = N, nrow = N) 
+
+for(row in 1:nrow(A_study)){
+  for(col in 1:ncol(A_study)) {
+    if(population[row, 3] == population[col,3]){
+        A_study[row, col] <- 1 
+    }
+  }
+}
+
+
+```
+
+#### The I_E matrix
+
+```{r}
+## Creating a matrix with 1's when two students are in the same studygroup and 0 when they are not 
+I_E_group <- matrix(0,ncol = N, nrow = N) 
+
+for(row in 1:nrow(I_E_group)){
+  for(col in 1:ncol(I_E_group)) {
+    if(population[row, 2] == population[col,2]){
+        A_study[row, col] <- 1 
+    }
+  }
+}
+```
+
+### The plot function
+
+```{r}
+plot_network_function <- function(A_cluster, network, population){
+  study_graph <- graph_from_adjacency_matrix(A_cluster, mode = "undirected") # creating a graph object from the study group matrix
+  study_cluster <- cluster_louvain(as.undirected(study_graph))
+  
+  # Attaching attributes to the networks
+  V(network)$frame.color <- "white"
+  V(network)$color <- population$I_E
+  V(network)$label <- ""
+  E(network)$arrow.mode <- 0 # Removing arrows showing direction from edges 
+  V(network)$size <- degree(network, mode="all")
+
+return(plot(study_cluster, network))
+}
+```
+
+### 2.2 Friend of a friend  
+
+```{r}
+
+FoF_function <- function(N,friends_matrix, meeting_matrix, delta, friends_bonus, days){
+  dist_matrix <- matrix(0,ncol = N, nrow = N) # an empty matrix to store the geodesic distance for each pair
+  dist_graph <- graph_from_adjacency_matrix(friends_matrix, mode = "directed") 
+  for(i in 1:ncol(dist_matrix)){
+    for(j in 1:nrow(dist_matrix)) {
+      dist <- igraph::distances(network_graph, v = V(network_graph)[i], to = V(network_graph)[j], mode = "all")
+      dist_matrix[j,i] <- friends_bonus*(delta^(dist[[1]])*log(days))} #log is added to increase the influence over time
+  }
+  meeting_matrix <- meeting_matrix + dist_matrix
+return(meeting_matrix)
+}
+
+```
+
+
+```{r}
+
+friends_function <- function(meet_matrix, friends_matrix, alpha_pa){
+  friends_graph <- igraph::graph_from_adjacency_matrix(friends_matrix, mode = "directed")
+  degree <- degree(friends_graph, mode= "all")
+  for (row in 1:nrow(meet_matrix)){
+    for (col in 1:ncol(meet_matrix)){
+      meet_matrix[row,col] <- meet_matrix[row,col] + ((degree[row]*alpha_pa)*(degree[col]*alpha_pa)) # A modification of the original preferential attachment ((d1+alpha)(d2+alpha))
+    }
+  }
+  return(meet_matrix)
+} 
+```
+
+### The ABM
+
+```{r}
+
+# Setting parameters and weights
+
+# Number of students
+N <- 60
+
+# days
+t_max <- 60
+
+# Study group number
+group_no <- 12
+
+# Parameter weights for random meeting (from 1 to 4)
+random_meet <- 4
+
+# Baseline connect weight
+baseline_connect <- 10
+
+# Random connect weight
+random_connect <- 20
+
+# Random connect weight
+freq_network_plot = 20
+
+# Weight for geodesic distance
+delta <- 0.4
+
+# Weight for preferential attachment
+alpha_pa <- 0.2
+
+# Weight for friend bonus
+friends_bonus <- 4
+
+# 1. Create The population tibble
+population <- population_function(N, group_no)
+
+# 2. Create the studygroup matrix
+A_study <- matrix(0, ncol = N, nrow = N) 
+    
+  for(row in 1:nrow(A_study)) {
+    for(col in 1:ncol(A_study)) {
+       if(population[row,2] == population[col,2]){
+          A_study[row, col] <- 1 
+      }
+    }
+  }
+
+# --- THE MEETING MATRIX ---
+# Create the meeting matrix
+meeting_matrix <- matrix(0,nrow = N,ncol = N)
+meeting_matrix <- meeting_base_function(meeting_matrix,4)
+# Converting the weights into probabilities using the softmax
+meeting_matrix <- softmax_matrix_function(meeting_matrix)
+
+
+# --- THE CONNECTION MATRIX ---
+connection_matrix <- matrix(0,nrow = N,ncol = N)
+connection_matrix <- connection_base_function(connection_matrix, random_connect)
+
+
+# Creating a matrix full of 0's to store friendship ties
+friends_matrix <- matrix(0,nrow = N,ncol = N)
+
+# --- THE OUTPUT ---
+# Creating the tibble for storing the development of total degrees over time
+output <- tibble(days = 1:t_max, total_degrees = NA)
+
+n_sg <- round(N/4)
+studygroup <- rep(1:n_sg, length.out = N)
+
+# study group number
+s_ID <- seq(1, n_sg)
+
+# Meet-up frequency
+s_meetup_interval <- sample(2:4, n_sg, replace = TRUE, prob = NULL)
+
+studygroups <- as.data.frame(cbind(
+  s_ID,
+  s_meetup_interval) )
+
+
+lecture_days <- seq(from = 1, to= 60, by = 2)
+# ------- EVENTS -------
+
+n_E <- 2
+
+event_ID <- seq(1, n_E)
+
+e_size <- c("small", "big")
+
+event_meetup_interval <- c(10, 15)
+
+e_small <- seq(4, t_max, by = event_meetup_interval[1])
+e_big <- seq(10, t_max, by = event_meetup_interval[2])
+
+events <- as.data.frame(cbind(
+  event_ID,
+  e_size,
+  event_meetup_interval) )
+
+participate <- rep("yes", N)
+
+small_event_participation <- as.data.frame(cbind(
+  ID = 1:N,
+  participate
+))
+
+big_event_participation <- as.data.frame(cbind(
+  ID = 1:N,
+  participate
+))
+
+# Start value for big event
+event_number <- 2
+
+# Setting frequency of decrease of friends
+friend_decrease <- seq(from = 41, to= 120, by = 10)
+
+```
+
+
+```{r}
+
+for (days in 1:t_max){
+  
+  big_event_participation$participate <-"no"
+  small_event_participation$participate <-"no"
+  
+  if (days %in% friend_decrease) {
+    for (x in 1:N) {
+      for (y in 1:N) {
+        if (friends_matrix[x, y] < 2 & friends_matrix[x, y] != 0) {
+          friends_matrix[x, y] <- friends_matrix[x, y] - 0.05
+        } 
+        if (friends_matrix[x, y] <= 0.05) {
+          friends_matrix[x, y] <- 0
+        } 
+      }
+      
+    }
+  } # END OF DECREASE
+  
+  
+  # Friend of a friend counts after two months
+  if (days > 40){
+    meeting_matrix <- FoF_function(N,friends_matrix, meeting_matrix, delta, friends_bonus, days)
+    meeting_matrix <- softmax_matrix_function(meeting_matrix)
+    
+    meeting_matrix <- friends_function(meeting_matrix, friends_matrix, alpha_pa)
+    meeting_matrix <- softmax_matrix_function(meeting_matrix)
+  }
+
+  for (student_i in population$ID){
+    
+    # -------------- START: LECTURE ---------------
+    
+    if (days %in% lecture_days) {
+      # Meet another student j
+      student_j <- sample(population$ID,1, replace = T, prob = meeting_matrix[ ,student_i])
+      
+      # Determine whether the two agents connect or not
+      random_roll <- sample(0:100,1) 
+      
+      if (random_roll <= connection_matrix[student_j,student_i] + baseline_connect + population$I_E[student_i]*2){
+        status_before <- friends_matrix[student_j,student_i]
+        friends_matrix[student_j,student_i] <- friends_matrix[student_j,student_i] + 0.2
+        status_after <- friends_matrix[student_j,student_i]
+            
+        if ((status_before < 2) & (status_after >= 2) & (student_i != student_j)) {
+          population$N_rel[student_i] <- population$N_rel[student_i] + 1
+        }
+          
+      }
+          
+      if (random_roll <= connection_matrix[student_i,student_j] + baseline_connect + population$I_E[student_j]*2){
+        status_before <- friends_matrix[student_i,student_j]
+        friends_matrix[student_i,student_j] <- friends_matrix[student_i,student_j] + 0.2
+        status_after <- friends_matrix[student_i,student_j]
+  
+        if ((status_before < 2) & (status_after >= 2) & (student_i != student_j)) {
+          population$N_rel[student_j] <- population$N_rel[student_j] + 1
+        }
+            
+      }
+    }
+    
+    
+    
+    # -------------- END: LECTURE ---------------
+    
+    
+    
+    
+    
+    
+    # -------------- START: STUDYGROUP MEETING ---------------
+    
+    
+    # Finding study group number
+    a_studygroup <- population$studygroup[student_i]
+    
+    # Finding study group meeting interval
+    study_meet <- studygroups$s_meetup_interval[a_studygroup]
+    study_meet <- seq(study_meet, t_max, by = study_meet)
+    
+    if (days %in% study_meet) {
+      
+      # Extract study group members
+      all_members <- population %>%
+        filter(studygroup == a_studygroup)
+      all_members <- all_members$ID
+      all_members <- all_members[! all_members %in% student_i] # Not being able to choose yourself
+      
+      # Meet another student j
+      student_j <- all_members[sample(1:length(all_members), 1)]
+
+      # Determine whether the two agents connect or not
+      random_roll <- sample(0:100,1) 
+      
+      if (random_roll <= connection_matrix[student_j,student_i] + baseline_connect + population$I_E[student_i]*2){
+        status_before <- friends_matrix[student_j,student_i]
+        friends_matrix[student_j,student_i] <- friends_matrix[student_j,student_i] + 0.25
+        status_after <- friends_matrix[student_j,student_i]
+        
+        if ((status_before < 2) & (status_after >= 2) & (student_i != student_j)) {
+          population$N_rel[student_i] <- population$N_rel[student_i] + 1
+        }
+      }
+      
+        
+      if (random_roll <= connection_matrix[student_i,student_j] + baseline_connect + population$I_E[student_j]*2){
+        status_before <- friends_matrix[student_i,student_j]
+        friends_matrix[student_i,student_j] <- friends_matrix[student_i,student_j] + 0.25
+        status_after <- friends_matrix[student_i,student_j]
+
+        if ((status_before < 2) & (status_after >= 2) & (student_i != student_j)) {
+          population$N_rel[student_j] <- population$N_rel[student_j] + 1
+        }
+        
+      }
+    
+    }
+    
+    
+    # -------------- END: STUDYGROUP MEETING ---------------
+    
+    
+    
+
+      
+    
+    
+  } # --------- END OF DAY FOR AGENTS -----------
+  
+  
+    
+    # -------------- START: CHOICE OF SMALL EVENT ---------------
+
+  if (days == 0) {
+    for (student_i in population$ID){
+      going_prob <- 0.5 + (population$I_E[student_i]/40)
+      go_or_not <- sample(0:1, size = 1, prob = c(1 - going_prob, going_prob))
+      
+      if (going_prob > 0.95) {
+        going_prob <- 0.95
+      }
+      
+      if(go_or_not == 1) {
+        small_event_participation$participate[student_i] <- "yes"
+        population$participate_small[student_i] <- population$participate_small[student_i] + 1 # Register participation
+        
+      } else if (go_or_not == 0) {
+        small_event_participation$participate[student_i] <- "no"
+      }
+      
+    } # END OF SMALL EVENT CHOICE
+    
+  }
+  
+  # -------------- END: CHOICE OF SMALL EVENT ---------------
+  
+  
+  
+  
+    
+  # -------------- START: CHOICE OF BIG EVENT ---------------
+    
+  if (days %in% e_big) {
+    
+    event_number <- event_number + 1
+    
+    for (student_i in population$ID) {
+      
+      if (event_number == 3) {
+        going_prob <- 0.5 + (population$I_E[student_i]/30)
+        
+      } else {
+        rel_above_1 <- length(which(friends_matrix[1,] >= 1))
+        going_prob <- 0.2 + ((population$I_E[student_i])/20) + (rel_above_1/40)
+      }
+      
+    
+      if (going_prob > 0.95) {
+        going_prob <- 0.95
+      }
+      
+      # DECIDE
+      go_or_not <- sample(0:1, size = 1, prob = c(1-going_prob, going_prob))
+      
+      # Register if you go or not (both in agents data frame and big event participation data frame)
+      if(go_or_not == 1) {
+        big_event_participation$participate[student_i] <- "yes"
+        population$participate_big[student_i] <- population$participate_big[student_i] + 1
+        
+        
+      } else if (go_or_not == 0) {
+        big_event_participation$participate[student_i] <- "no"
+        
+      }
+    }
+    
+    
+    
+    
+    # -------------- END: CHOICE OF BIG EVENT ---------------
+    
+  }
+  
+  
+  # --------- BEGINNING OF SMALL EVENT -----------
+  
+  if (days == 0) {
+    
+    # Filtering those have chosen to participate
+
+    small_event_happening <- small_event_participation %>%
+      filter(participate == "yes")
+    
+    agents_going <- as.integer(small_event_happening$ID)
+    agents_going <- sample(agents_going) # Randomize order of agents
+    
+    # Finding number of dinner groups depending on number of participants
+    n_dg <- round(length(agents_going)/5)
+    
+    dg <- rep(1:n_dg, length.out = length(agents_going))
+    
+    # making a dataframe with agents and dinnergroups
+    dinnergroups <- as.data.frame(cbind(
+      agents_going,
+      dg) )
+    
+    
+    # Small increase for all in the dinner group
+    
+    
+    for (s in 1:length(agents_going)) {
+      
+      # Finding agent number for participant
+      dinner_i <- dinnergroups$agents_going[s]
+      
+      # Finding dinner group number
+      agent_dg <- dinnergroups$dg[s]
+      
+      #Extracting index numbers for participants in small event
+      dg_members <- seq(dinnergroups$dg[s], length(agents_going), by = n_dg) # Agents that are in the same dinnergroup
+      
+      for (rounds in 1:2) {
+        # Finding index of who to connect with and extracting agent number 
+        who_in_dg <- dg_members[sample(1:length(dg_members), 1)]
+        dinner_j <- dinnergroups$agents_going[who_in_dg]
+        
+        # Determine whether the two agents connect or not
+        random_roll <- sample(0:100, 1) 
+          
+        if (random_roll <= connection_matrix[dinner_j,dinner_i] + baseline_connect){
+          status_before <- friends_matrix[dinner_j,dinner_i]
+          friends_matrix[dinner_j,dinner_i] <- friends_matrix[dinner_j,dinner_i] + 0.7
+          status_after <- friends_matrix[dinner_j,dinner_i]
+          
+          if ((status_before < 2) & (status_after >= 2) & (student_i != student_j)){
+            population$N_rel[dinner_i] <- population$N_rel[dinner_i] + 1
+          }
+          
+        }
+        
+        if (random_roll <= connection_matrix[dinner_i,dinner_j] + baseline_connect){
+          status_before <- friends_matrix[dinner_i,dinner_j]
+          friends_matrix[dinner_i,dinner_j] <- friends_matrix[dinner_i,dinner_j] + 0.7
+          status_after <- friends_matrix[dinner_i,dinner_j]
+          
+          if ((status_before < 2) & (status_after >= 2) & (student_i != student_j)){
+            population$N_rel[dinner_j] <- population$N_rel[dinner_j] + 1
+          }
+        }
+        
+      }
+
+      
+      
+    } # --- End of agent going ---
+    
+    
+    
+    
+    
+  }
+  # --------- END OF SMALL EVENT -----------
+  
+  
+  # --------- START OF BIG EVENT -----------
+  
+  if (days %in% e_big) {
+    big_event_happening <- big_event_participation %>%
+      filter(participate == "yes")
+    
+    big_event_happening$ID <- as.integer(big_event_happening$ID)
+    
+    people <- as.integer(big_event_happening$ID)
+    
+    N_big_event <- length(people)
+    
+    # Create the meeting matrix for the big events (how likely you are to meet someone)
+    big_event_meeting_matrix <- matrix(0,nrow = N_big_event,ncol = N_big_event)
+    big_event_meeting_matrix <- big_event_meeting_base_function(N_big_event, 4)
+    
+    # Converting the weights into probabilities using the softmax
+    big_event_meeting_matrix <- softmax_matrix_function(big_event_meeting_matrix)
+
+    test_mat <- matrix(nrow = length(people), ncol = length(people))
+
+    for (z in 1:length(people)) {
+      for (c in 1:length(people))
+      test_mat[z, c] <- meeting_matrix[people[z], people[c]] + big_event_meeting_matrix[z , c]
+    }
+    
+    big_event_meeting_matrix <- softmax_matrix_function(test_mat)
+    
+    for (s in 1:length(people)) {
+
+      # Who is the agent
+      student_i <- people[s]
+            
+      # How many to socialize with
+      n_socialize <- abs(round(rnorm(1, mean = population$I_E[student_i], sd = 1)))
+      
+      for (i in 1:n_socialize) {
+        # Who they socialize with
+        student_j <- sample(1:length(people),1, replace = T, prob = big_event_meeting_matrix[ , s])
+        student_j <- people[student_j]
+        
+        random_roll <- sample(0:100, 1) 
+        
+        if (random_roll <= connection_matrix[student_j,student_i] + population$I_E[student_i]*2 + friends_matrix[student_j,student_i]*5 ){
+          status_before <- friends_matrix[student_j,student_i]
+          friends_matrix[student_j,student_i] <- friends_matrix[student_j,student_i] + 0.35
+          status_after <- friends_matrix[student_j,student_i]
+          
+          if ((status_before < 2) & (status_after >= 2) & (student_i != student_j)) {
+            population$N_rel[student_i] <- population$N_rel[student_i] + 1
+          }
+          
+        }
+        
+        if (random_roll <= connection_matrix[student_i,student_j] + population$I_E[student_j]*2 + friends_matrix[student_j,student_i]*5){
+          status_before <- friends_matrix[student_i,student_j]
+          friends_matrix[student_i,student_j] <- friends_matrix[student_i,student_j] + 0.35
+          status_after <- friends_matrix[student_i,student_j]
+          
+          if ((status_before < 2) & (status_after >= 2) & (student_i != student_j)) {
+            population$N_rel[student_j] <- population$N_rel[student_j] + 1
+          }
+          
+        }
+        
+      }
+      
+      
+    }
+    
+  } 
+  # --------- END OF BIG EVENT ---------
+  
+
+  
+  # Create a network to extract network measures and save the total amount of degrees in the output tibble
+  network_graph <- igraph::graph_from_adjacency_matrix(friends_matrix, mode = "directed")
+  
+  network_cleaned <- igraph::simplify( # Simplifying the graph
+    network_graph,
+    remove.multiple = TRUE,
+    remove.loops = TRUE,
+    edge.attr.comb = igraph_opt("edge.attr.comb"))
+  
+  ## Saving the output
+  output$total_degrees[days] <- igraph::degree(network_cleaned, mode = "total")
+  if ((days/freq_network_plot) %% 1 == 0){ # Printing the network every 30 days
+    friends_network <- friends_matrix
+    for (x in 1:N) {
+      for (y in 1:N) {
+        if (x-y == 0) {
+          friends_network[x, y] <- 0
+        } else if (friends_network[x, y] < 2) {
+          friends_network[x, y] <- 0
+        }
+        if (friends_network[x, y] >= 2 ) {
+          friends_network[x, y] <- 1
+        }
+      }
+    }
+    print(plot_network_function(friends_network,network_cleaned, population))  
+  }
+  
+  if (days == 30) {
+    df_30 <- population
+    population$degree <- degree(network_cleaned)
+  } else if (days == 60) {
+    df_60 <- population
+    population$degree <- degree(network_cleaned)
+  } else if (days == 90) {
+    df_90 <- population
+    population$degree <- degree(network_cleaned)
+  } else if (days == 120) {
+    df_120 <- population
+    population$degree <- degree(network_cleaned)
+  }
+  
+
+}
+# Print the network
+print(plot_network_function(friends_network,network_cleaned, population))  
+
+```
+
+```{r}
+
+if (t_max == 60) {
+  network_cleaned_big_60 <- network_cleaned
+} else if (t_max == 120) {
+  network_cleaned_big_120 <- network_cleaned
+}
+
+```
+
+```{r}
+inside_studygroup <- matrix(nrow = N, ncol = N, 0)
+
+for (x in 1:N) {
+  for (y in 1:N) {
+    if (x == y) {
+      inside_studygroup[x, y] <- 0
+    } else if (friends_matrix[x, y] < 2 | A_study[x, y] != 1) {
+      inside_studygroup[x, y] <- 0
+    } else if (friends_matrix[x, y] >= 2 & A_study[x, y] == 1) {
+      inside_studygroup[x, y] <- 1
+    }
+  }
+  
+}
+
+```
+
+```{r}
+outside_studygroup <- matrix(nrow = N, ncol = N, 0)
+
+for (x in 1:N) {
+  for (y in 1:N) {
+    if (x-y == 0) {
+      outside_studygroup[x, y] <- 0
+    } else if (friends_matrix[x, y] < 2 | A_study[x, y] == 1 ) {
+      outside_studygroup[x, y] <- 0
+    } else if (friends_matrix[x, y] >= 2 & A_study[x, y] == 0) {
+      outside_studygroup[x, y] <- 1
+    } 
+  }
+  
+}
+
+
+```
+
+```{r}
+
+n_inside_studygroups <- NA
+
+for (x in 1:N) {
+  n_x <- length(which(inside_studygroup[x, ] == 1))
+  n_inside_studygroups[x] <- n_x
+}
+
+population$n_inside_studygroups <- n_inside_studygroups
+
+```
+
+
+```{r}
+n_outside_studygroups <- NA
+
+for (x in 1:N) {
+  n_x <- length(which(outside_studygroup[x, ] == 1))
+  n_outside_studygroups[x] <- n_x
+}
+
+population$n_outside_studygroups <- n_outside_studygroups
+
+```
+
+```{r}
+nrel_new_matrix <- matrix(nrow = N, ncol = N, 0)
+
+for (x in 1:N) {
+  for (y in 1:N) {
+    if (x-y == 0) {
+      nrel_new_matrix[x, y] <- 0
+    } else if (friends_matrix[x, y] < 1) {
+      nrel_new_matrix[x, y] <- 0
+    } else if (friends_matrix[x, y] >= 1) {
+      nrel_new_matrix[x, y] <- 1
+    } 
+  }
+  
+}
+
+nrel_new <- NA
+
+for (x in 1:N) {
+  n_x <- length(which(nrel_new_matrix[x, ] == 1))
+  nrel_new[x] <- n_x
+}
+
+population$nrel_new <- nrel_new
+
+
+```
+
+```{r}
+write.csv(population, "~/data_big.csv", row.names = FALSE)
+```
