@@ -1,0 +1,169 @@
+---
+title: "Network Analysis for Validation of 60 Ticks"
+author: "Emma Rose Hahn and Mie Buchhave Søgaard"
+date: "09/06/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/SocCult/abm_soccult")
+```
+
+## Table of content
+
+Template of Network Analysis used from Riccardo template given in class. We are using this to load in and visualize the 2019 first semester data, and then to use quantification to validate our ABM network agaisnt the 2019 dataset. 
+
+
+There's 3 parts:
+1. Visualization
+2. Quantification 
+3. Community detection
+
+First we load the data for 2019
+
+```{r Load data}
+pacman::p_load(tidyverse,
+               here,
+               network,
+               igraph,
+               ggraph,
+               tidygraph,
+               patchwork)
+
+CogSci_2019_n1_edges <- read_csv(
+  here("CogSci19S1_NetworkFriends.csv")) %>% 
+  subset(
+    !is.na(to) & !is.na(from) & !is.na(weight))
+
+# Creating a list of unique IDs across the 3 datasets
+CogSci_2019_nodes <- data.frame(ID=unique(c(
+  CogSci_2019_n1_edges$from,
+  CogSci_2019_n1_edges$to)))
+
+```
+
+Then we visualize the data
+
+```{r}
+
+# Remove data from people being funny
+
+CogSci_2019_nodes <- CogSci_2019_nodes %>% subset(
+   !(ID %in% c("fake0", "fake", "100", "1")) & !is.na(ID)
+)
+ 
+
+CogSci_2019_n1_edges <- CogSci_2019_n1_edges %>% subset(
+  !(to %in% c("fake0", "fake", "100", "1")) & !(from %in% c("fake0", "fake", "100", "1") & !is.na(to) & !is.na(from))
+)
+
+```
+
+```{r}
+# Create the graph from semester 1
+CogSci_2019_n1_igraph <-
+  graph_from_data_frame(d = CogSci_2019_n1_edges,
+                        vertices = CogSci_2019_nodes,
+                        directed = TRUE)
+
+CogSci_2019_n1_igraph <-
+  graph_from_data_frame(d = CogSci_2019_n1_edges,
+                        vertices = CogSci_2019_nodes,
+                        directed = TRUE)
+
+E(CogSci_2019_n1_igraph)$arrow.mode <- 0
+V(CogSci_2019_n1_igraph)$label <- ""
+V(CogSci_2019_n1_igraph)$frame.color <- "white"
+V(CogSci_2019_n1_igraph)$color <- "pink"
+E(CogSci_2019_n1_igraph)$width <- edge_attr(CogSci_2019_n1_igraph)$weight
+
+deg1 <- degree(CogSci_2019_n1_igraph, mode="all")
+V(CogSci_2019_n1_igraph)$size <- deg1
+
+p1<-plot(CogSci_2019_n1_igraph,
+     layout = layout_on_sphere, # Explore layouts!
+     edge.arrow.size = 0.2)
+```
+
+```{r}
+plot(CogSci_2019_n1_igraph,
+     layout = layout_nicely, # Explore layouts!
+     edge.arrow.size = 0.2)
+```
+
+#All together
+
+Quantification
+
+
+```{r}
+#degree_distribution(network_cleaned)
+
+
+par(mfrow=c(1,2))
+
+mean(degree(network_cleaned))
+mean(degree(CogSci_2019_n1_igraph))
+
+ABM_D <- degree(network_cleaned)
+CogSci_Real_D <- degree(CogSci_2019_n1_igraph) 
+
+t.test(ABM_D, CogSci_Real_D)
+
+mean(degree_distribution(network_cleaned))
+mean(degree_distribution(CogSci_2019_n1_igraph))
+
+DegreeDistr_ABM <- degree_distribution(network_cleaned)
+DegreeDistr_2019 <- degree_distribution(CogSci_2019_n1_igraph)
+
+#t.test(DegreeDistr_ABM, DegreeDistr_2019)
+
+# Degree
+
+rethinking::dens(degree_distribution(network_cleaned))+
+  title("ABM Degree Distribution")
+rethinking::dens(degree_distribution(CogSci_2019_n1_igraph))+
+  title("2019 Data Degree Distribution")
+
+
+
+# Average path length
+
+mean_distance(network_cleaned, directed = TRUE, unconnected = TRUE)
+mean_distance(CogSci_2019_n1_igraph, directed = TRUE, unconnected = TRUE)
+
+# Clustering coefficient
+
+transitivity(network_cleaned)
+transitivity(CogSci_2019_n1_igraph)
+
+Transitivity_ABM <- transitivity(network_cleaned, type = 'local')
+Transitivity_2019 <-transitivity(CogSci_2019_n1_igraph, type = 'local')
+
+t.test(Transitivity_ABM, Transitivity_2019) 
+## Centrality
+
+mean(betweenness(network_cleaned))
+rethinking::dens(betweenness(network_cleaned))+
+  title("ABM Betweenness Centrality")
+mean(betweenness(CogSci_2019_n1_igraph))
+rethinking::dens(betweenness(CogSci_2019_n1_igraph))+
+  title("2019 Data Betweenness Centrality")
+
+Betweenness_ABM <- betweenness(network_cleaned)
+Betweenness_2019 <- betweenness(CogSci_2019_n1_igraph)
+
+t.test(Betweenness_ABM, Betweenness_2019) 
+
+
+mean(eigen_centrality(network_cleaned)$vector)
+mean(eigen_centrality(CogSci_2019_n1_igraph)$vector)
+
+Eigen_ABM <- eigen_centrality(network_cleaned)$vector
+Eigen_2019 <- eigen_centrality(CogSci_2019_n1_igraph)$vector
+
+t.test(Eigen_ABM, E_2019)
+
+
+```
