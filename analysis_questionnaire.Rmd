@@ -284,11 +284,20 @@ plotty <- plotty %>%
     easier = 'mean(easier_socialise_not_taking_initiative)',
     )
 
+
+plotty <- plotty %>% 
+  rename(
+    sd = 'sd(easier_socialise_not_taking_initiative)',
+    )
+
+
 plotty$I_E <- as.factor(plotty$I_E)
 
 ggplot(plotty, aes(fill= I_E, y= easier, x= I_E)) +
   geom_bar(position='dodge', stat='identity') +
-  labs(title = "Easier to Socialise Not Taking Initiative Depending on I-E Score", x= "I_E", y = "Mean of Agreement", subtitle = "Agreement Scale: 1 = Strongly Disagree, 7 = Strongly Agree")
+  labs(title = "Easier to Socialise Not Taking Initiative Depending on I-E Score", x= "I_E", y = "Mean of Agreement", subtitle = "Agreement Scale: 1 = Strongly Disagree, 7 = Strongly Agree") +
+  geom_errorbar(aes(ymin=easier-sd, ymax=easier+sd, width=.2))
+  
 
 ```
 #people asked to hangout is increased the more ex u come, we can use this
